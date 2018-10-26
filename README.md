@@ -8,7 +8,7 @@
 
 ```json
 {
-  "logger": {
+  "zap": {
     "cores": [{
       "level": "debug",
       "encoding": "console"

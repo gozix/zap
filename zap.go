@@ -35,6 +35,11 @@ type (
 		Stacktrace  string
 		Development bool
 	}
+
+	// nopCloser is stdout wrapper.
+	nopCloser struct {
+		zapcore.WriteSyncer
+	}
 )
 
 // BundleName is default definition name.
@@ -52,16 +57,16 @@ func (b *Bundle) Name() string {
 
 // Build implements the glue.Bundle interface.
 func (b *Bundle) Build(builder *di.Builder) error {
-	builder.AddDefinition(di.Definition{
+	builder.Add(di.Def{
 		Name: BundleName,
-		Build: func(ctx di.Context) (_ interface{}, err error) {
+		Build: func(ctn di.Container) (_ interface{}, err error) {
 			var cfg *viper.Viper
-			if err = ctx.Fill(viper.BundleName, &cfg); err != nil {
+			if err = ctn.Fill(viper.BundleName, &cfg); err != nil {
 				return nil, err
 			}
 
 			var conf loggerConf
-			if err = cfg.UnmarshalKey("logger", &conf); err != nil {
+			if err = cfg.UnmarshalKey(BundleName, &conf); err != nil {
 				return nil, err
 			}
 
@@ -89,7 +94,7 @@ func (b *Bundle) Build(builder *di.Builder) error {
 						enc = zapcore.NewJSONEncoder(eConf)
 					}
 
-					core = zapcore.NewCore(enc, zapcore.AddSync(os.Stdout), level)
+					core = zapcore.NewCore(enc, nopCloser{os.Stdout}, level)
 				case "gelf":
 					var options = make([]gelf.Option, 0, 3)
 					if len(logger.Addr) > 0 {
@@ -154,8 +159,9 @@ func (b *Bundle) Build(builder *di.Builder) error {
 
 			return zap.New(zapcore.NewTee(cores...), options...), nil
 		},
-		Close: func(obj interface{}) {
-			obj.(*zap.Logger).Sync()
+		Close: func(obj interface{}) (err error) {
+
+			return obj.(*zap.Logger).Sync()
 		},
 	})
 
@@ -165,4 +171,9 @@ func (b *Bundle) Build(builder *di.Builder) error {
 // DependsOn implements the glue.DependsOn interface.
 func (b *Bundle) DependsOn() []string {
 	return []string{"viper"}
+}
+
+// Close is override original close.
+func (nopCloser) Close() error {
+	return nil
 }
