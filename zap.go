@@ -170,7 +170,7 @@ func (b *Bundle) Build(builder *di.Builder) error {
 
 // DependsOn implements the glue.DependsOn interface.
 func (b *Bundle) DependsOn() []string {
-	return []string{"viper"}
+	return []string{viper.BundleName}
 }
 
 // Close is override original close.
