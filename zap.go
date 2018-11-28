@@ -57,7 +57,7 @@ func (b *Bundle) Name() string {
 
 // Build implements the glue.Bundle interface.
 func (b *Bundle) Build(builder *di.Builder) error {
-	builder.Add(di.Def{
+	return builder.Add(di.Def{
 		Name: BundleName,
 		Build: func(ctn di.Container) (_ interface{}, err error) {
 			var cfg *viper.Viper
@@ -164,8 +164,6 @@ func (b *Bundle) Build(builder *di.Builder) error {
 			return obj.(*zap.Logger).Sync()
 		},
 	})
-
-	return nil
 }
 
 // DependsOn implements the glue.DependsOn interface.
