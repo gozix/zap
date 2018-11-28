@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gozix/viper"
 	"github.com/sarulabs/di"
 	"github.com/snovichkov/zap-gelf"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-
-	"github.com/gozix/viper"
 )
 
 type (
