@@ -35,8 +35,8 @@ type (
 		Development bool
 	}
 
-	// nopCloser is stdout wrapper.
-	nopCloser struct {
+	// nopSyncer is stdout wrapper.
+	nopSyncer struct {
 		zapcore.WriteSyncer
 	}
 )
@@ -93,7 +93,7 @@ func (b *Bundle) Build(builder *di.Builder) error {
 						enc = zapcore.NewJSONEncoder(eConf)
 					}
 
-					core = zapcore.NewCore(enc, nopCloser{os.Stdout}, level)
+					core = zapcore.NewCore(enc, &nopSyncer{os.Stdout}, level)
 				case "gelf":
 					var options = make([]gelf.Option, 0, 3)
 					if len(logger.Addr) > 0 {
@@ -159,7 +159,6 @@ func (b *Bundle) Build(builder *di.Builder) error {
 			return zap.New(zapcore.NewTee(cores...), options...), nil
 		},
 		Close: func(obj interface{}) (err error) {
-
 			return obj.(*zap.Logger).Sync()
 		},
 	})
@@ -170,7 +169,7 @@ func (b *Bundle) DependsOn() []string {
 	return []string{viper.BundleName}
 }
 
-// Close is override original close.
-func (nopCloser) Close() error {
+// Sync is override original close.
+func (nopSyncer) Sync() error {
 	return nil
 }
