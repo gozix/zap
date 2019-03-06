@@ -41,6 +41,9 @@ type (
 	}
 )
 
+// TagOption is a option tag name.
+var TagOption = "zap.option"
+
 // BundleName is default definition name.
 const BundleName = "zap"
 
@@ -156,12 +159,38 @@ func (b *Bundle) Build(builder *di.Builder) error {
 				options = append(options, zap.Fields(fields...))
 			}
 
+			options, err = b.appendExternalOptions(ctn, options)
+			if err != nil {
+				return nil, err
+			}
+
 			return zap.New(zapcore.NewTee(cores...), options...), nil
 		},
 		Close: func(obj interface{}) (err error) {
 			return obj.(*zap.Logger).Sync()
 		},
 	})
+}
+
+func (b *Bundle) appendExternalOptions(ctn di.Container, options []zap.Option) ([]zap.Option, error) {
+	for name, def := range ctn.Definitions() {
+		for _, tag := range def.Tags {
+			if tag.Name != TagOption {
+				continue
+			}
+
+			var option zap.Option
+			if err := ctn.Fill(name, &option); err != nil {
+				return nil, err
+			}
+
+			options = append(options, option)
+
+			break
+		}
+	}
+
+	return options, nil
 }
 
 // DependsOn implements the glue.DependsOn interface.
