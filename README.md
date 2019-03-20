@@ -9,17 +9,18 @@
 ```json
 {
   "zap": {
-    "cores": [{
-      "level": "debug",
-      "encoding": "console"
-    }, {
-      "level": "debug",
-      "encoding": "json"
-    }, {
-      "addr": "127.0.0.1:12001",
-      "level": "debug",
-      "encoding": "gelf"
-    }],
+    "cores": {
+      "console": {
+        "type": "output",
+        "level": "debug",
+        "encoding": "console"
+      },
+      "json": {
+        "type": "output",
+        "level": "debug",
+        "encoding": "json"
+      }
+    },
     "caller": true,
     "fields": [{
       "key": "team",
@@ -34,3 +35,15 @@
   }
 }
 ```
+
+## Built-in Tags
+
+| Symbol                          | Value              | Description     | 
+| ------------------------------- | ------------------ | ----------------|
+| [core.TagFactory](core/core.go) | zap.core.factor    | Add an factory  |
+
+
+## Cores
+
+- [gelf](https://github.com/gozix/zap-gelf)
+- [stream](core/stream/stream.go)
