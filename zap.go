@@ -32,6 +32,7 @@ type (
 			Value string
 		}
 		Stacktrace  string
+		MessageKey  string
 		Development bool
 	}
 
@@ -79,6 +80,10 @@ func (b *Bundle) Build(builder *di.Builder) error {
 						eConf = zap.NewDevelopmentEncoderConfig()
 					} else {
 						eConf = zap.NewProductionEncoderConfig()
+					}
+
+					if len(conf.MessageKey) > 0 {
+						eConf.MessageKey = conf.MessageKey
 					}
 
 					var level zap.AtomicLevel

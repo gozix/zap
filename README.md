@@ -29,6 +29,7 @@
       "value": "any service name"
     }],
     "stacktrace": "error",
+    "messagekey": "message",
     "development": true
   }
 }
