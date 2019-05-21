@@ -32,7 +32,7 @@ type (
 			Value string
 		}
 		Stacktrace  string
-		MessageKey  string
+		MessageKey  string `mapstructure:"message_key"`
 		Development bool
 	}
 
