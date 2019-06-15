@@ -6,7 +6,7 @@ import (
 
 	"github.com/gozix/viper"
 	"github.com/sarulabs/di"
-	"github.com/snovichkov/zap-gelf"
+	gelf "github.com/snovichkov/zap-gelf"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -161,7 +161,11 @@ func (b *Bundle) Build(builder *di.Builder) error {
 				options = append(options, zap.Fields(fields...))
 			}
 
-			return zap.New(zapcore.NewTee(cores...), options...), nil
+			var logger = zap.New(zapcore.NewTee(cores...), options...)
+			zap.ReplaceGlobals(logger)
+			zap.RedirectStdLog(logger)
+
+			return logger, nil
 		},
 		Close: func(obj interface{}) (err error) {
 			return obj.(*zap.Logger).Sync()
