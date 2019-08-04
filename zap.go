@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gozix/viper"
-	"github.com/sarulabs/di"
+	"github.com/gozix/viper/v2"
+	"github.com/sarulabs/di/v2"
 	gelf "github.com/snovichkov/zap-gelf"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
