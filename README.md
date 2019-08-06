@@ -11,12 +11,12 @@
   "zap": {
     "cores": {
       "console": {
-        "type": "output",
+        "type": "stream",
         "level": "debug",
         "encoding": "console"
       },
       "json": {
-        "type": "output",
+        "type": "stream",
         "level": "debug",
         "encoding": "json"
       }
@@ -40,8 +40,7 @@
 
 | Symbol                          | Value              | Description     | 
 | ------------------------------- | ------------------ | ----------------|
-| [core.TagFactory](core/core.go) | zap.core.factor    | Add an factory  |
-
+| [core.TagFactory](core/core.go) | zap.core.factory   | Add an factory  |
 
 ## Cores
 
