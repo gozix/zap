@@ -56,10 +56,16 @@ func (b *Bundle) Name() string {
 
 // Build implements the glue.Bundle interface.
 func (b *Bundle) Build(builder *di.Builder) (err error) {
-	return builder.Add(
-		b.defBundle(),
-		b.defStreamCoreFactory(),
-	)
+	var defs = make([]di.Def, 0, 2)
+	if !builder.IsDefined(BundleName) {
+		defs = append(defs, b.defBundle())
+	}
+
+	if !builder.IsDefined(DefStreamCoreFactory) {
+		defs = append(defs, b.defStreamCoreFactory())
+	}
+
+	return builder.Add(defs...)
 }
 
 // DependsOn implements the glue.DependsOn interface.
