@@ -78,7 +78,7 @@ func (b *Bundle) defBundle() di.Def {
 	return di.Def{
 		Name: BundleName,
 		Build: func(ctn di.Container) (_ interface{}, err error) {
-			var cfg *viperBundle.Viper
+			var cfg *viper.Viper
 			if err = ctn.Fill(viperBundle.BundleName, &cfg); err != nil {
 				return nil, err
 			}
