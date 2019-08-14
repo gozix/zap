@@ -94,7 +94,7 @@ func (b *Bundle) Build(builder *di.Builder) error {
 						}
 					}
 
-					if len(logger.Level) > 0 {
+					if len(logger.TimeKey) > 0 {
 						eConf.TimeKey = logger.TimeKey
 					}
 
