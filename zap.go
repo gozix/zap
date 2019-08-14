@@ -88,7 +88,6 @@ func (b *Bundle) Build(builder *di.Builder) error {
 					}
 
 					if len(logger.TimeKey) > 0 {
-						panic(fmt.Sprintf("AAAAAAAAA TIME KEY IS %s", logger.TimeKey))
 						eConf.TimeKey = logger.TimeKey
 					}
 
