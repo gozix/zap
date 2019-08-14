@@ -25,7 +25,7 @@ type (
 			Host     string
 			Level    string
 			Encoding string
-			TimeKey  string
+			TimeKey  string `mapstructure:"time_key"`
 		}
 		Caller bool
 		Fields []struct {
@@ -87,15 +87,15 @@ func (b *Bundle) Build(builder *di.Builder) error {
 						eConf.MessageKey = conf.MessageKey
 					}
 
+					if len(logger.TimeKey) > 0 {
+						eConf.TimeKey = logger.TimeKey
+					}
+
 					var level zap.AtomicLevel
 					if len(logger.Level) > 0 {
 						if err = level.UnmarshalText([]byte(logger.Level)); err != nil {
 							return nil, err
 						}
-					}
-
-					if len(logger.TimeKey) > 0 {
-						eConf.TimeKey = logger.TimeKey
 					}
 
 					var enc = zapcore.NewConsoleEncoder(eConf)
