@@ -25,6 +25,7 @@ type (
 			Host     string
 			Level    string
 			Encoding string
+			TimeKey  string
 		}
 		Caller bool
 		Fields []struct {
@@ -91,6 +92,10 @@ func (b *Bundle) Build(builder *di.Builder) error {
 						if err = level.UnmarshalText([]byte(logger.Level)); err != nil {
 							return nil, err
 						}
+					}
+
+					if len(logger.Level) > 0 {
+						eConf.TimeKey = logger.TimeKey
 					}
 
 					var enc = zapcore.NewConsoleEncoder(eConf)
