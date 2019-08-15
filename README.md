@@ -6,13 +6,15 @@
 
 ## Configuration example
 
+time_encoder config can be ("iso8601", "millis", "nanos") and only for "console" and "json" encoding
+
 ```json
 {
   "zap": {
     "cores": [{
       "level": "debug",
       "encoding": "console",
-      "time_encoder": "iso8601" // can be ("iso8601", "millis", "nanos") only for "console" and "json" encoding
+      "time_encoder": "iso8601"
     }, {
       "level": "debug",
       "encoding": "json",
