@@ -136,6 +136,13 @@ func (b *Bundle) defStreamCoreFactory() di.Def {
 					eConf = zap.NewDevelopmentEncoderConfig()
 				}
 
+				key = path + ".time_encoder"
+				if cfg.IsSet(key) {
+					if err = eConf.EncodeTime.UnmarshalText([]byte(cfg.GetString(key))); err != nil {
+						return nil, err
+					}
+				}
+
 				key = path + ".message_key"
 				if cfg.IsSet(key) {
 					eConf.MessageKey = cfg.GetString(key)
