@@ -88,7 +88,9 @@ func (b *Bundle) Build(builder *di.Builder) error {
 					}
 
 					if len(logger.TimeEncoder) > 0 {
-						eConf.EncodeTime.UnmarshalText([]byte(logger.TimeEncoder))
+						if err = eConf.EncodeTime.UnmarshalText([]byte(logger.TimeEncoder)); err != nil {
+							return nil, err
+						}
 					}
 
 					var level zap.AtomicLevel
