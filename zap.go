@@ -21,10 +21,11 @@ type (
 	// loggerConf is logger configuration struct.
 	loggerConf struct {
 		Cores []struct {
-			Addr     string
-			Host     string
-			Level    string
-			Encoding string
+			Addr        string
+			Host        string
+			Level       string
+			Encoding    string
+			TimeEncoder string `mapstructure:"time_encoder"`
 		}
 		Caller bool
 		Fields []struct {
@@ -84,6 +85,12 @@ func (b *Bundle) Build(builder *di.Builder) error {
 
 					if len(conf.MessageKey) > 0 {
 						eConf.MessageKey = conf.MessageKey
+					}
+
+					if len(logger.TimeEncoder) > 0 {
+						if err = eConf.EncodeTime.UnmarshalText([]byte(logger.TimeEncoder)); err != nil {
+							return nil, err
+						}
 					}
 
 					var level zap.AtomicLevel
