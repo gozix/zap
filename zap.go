@@ -104,8 +104,15 @@ func (b *Bundle) defBundle() di.Def {
 
 			return logger, nil
 		},
-		Close: func(obj interface{}) (err error) {
-			return obj.(*zap.Logger).Sync()
+		Close: func(obj interface{}) error {
+			// os.Stdout.Sync() fails on different consoles. Ignoring error.
+			var err = obj.(*zap.Logger).Sync()
+			if e, ok := err.(*os.PathError); ok {
+				if strings.HasPrefix(e.Path, "/dev/std") {
+					return nil
+				}
+			}
+			return err
 		},
 	}
 }
@@ -220,21 +227,22 @@ func (b *Bundle) cores(cfg *viper.Viper, factories map[string]CoreFactory) (_ []
 
 	for def := range defs {
 		var path = fmt.Sprintf("%s.cores.%s", BundleName, def)
-		if cfg.IsSet(path + ".type") {
-			var coreType = cfg.GetString(path + ".type")
-			if _, ok := factories[coreType]; !ok {
-				return nil, fmt.Errorf(`core factory with type "%s" is not defined`, coreType)
-			}
 
-			var c zapcore.Core
-			if c, err = factories[coreType](path); err != nil {
-				return nil, err
-			}
-
-			cores = append(cores, c)
+		if !cfg.IsSet(path + ".type") {
+			return nil, fmt.Errorf(`core "%s" should contains type property`, def)
 		}
 
-		return nil, fmt.Errorf(`core "%s" should contains type property`, def)
+		var coreType = cfg.GetString(path + ".type")
+		if _, ok := factories[coreType]; !ok {
+			return nil, fmt.Errorf(`core factory with type "%s" is not defined`, coreType)
+		}
+
+		var c zapcore.Core
+		if c, err = factories[coreType](path); err != nil {
+			return nil, err
+		}
+
+		cores = append(cores, c)
 	}
 
 	if len(cores) == 0 {
