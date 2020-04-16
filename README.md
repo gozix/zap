@@ -16,12 +16,14 @@ time_encoder config can be ("iso8601", "millis", "nanos") and only for "console"
         "type": "stream",
         "level": "debug",
         "encoding": "console",
+        "message_key": "message",
         "time_encoder": "iso8601"
       },
       "json": {
         "type": "stream",
         "level": "debug",
         "encoding": "json",
+        "message_key": "message",
         "time_encoder": "millis"
       }
     },
@@ -34,7 +36,6 @@ time_encoder config can be ("iso8601", "millis", "nanos") and only for "console"
       "value": "any service name"
     }],
     "stacktrace": "error",
-    "message_key": "message",
     "development": true
   }
 }
