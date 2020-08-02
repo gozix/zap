@@ -7,7 +7,6 @@ import (
 
 	glueBundle "github.com/gozix/glue/v2"
 	viperBundle "github.com/gozix/viper/v2"
-
 	"github.com/sarulabs/di/v2"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -107,11 +106,17 @@ func (b *Bundle) defBundle() di.Def {
 		Close: func(obj interface{}) error {
 			// os.Stdout.Sync() fails on different consoles. Ignoring error.
 			var err = obj.(*zap.Logger).Sync()
-			if e, ok := err.(*os.PathError); ok {
+			switch e := err.(type) {
+			case *os.PathError:
 				if strings.HasPrefix(e.Path, "/dev/std") {
 					return nil
 				}
+			default:
+				if strings.HasPrefix(e.Error(), "sync /dev/stdout") {
+					return nil
+				}
 			}
+
 			return err
 		},
 	}
