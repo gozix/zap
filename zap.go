@@ -38,6 +38,11 @@ type (
 	fieldsConf []struct {
 		Key, Value string
 	}
+
+	// multiErr is a stub for recognizing then error is a instance of uber-go/multierr
+	multiErr interface {
+		Errors() []error
+	}
 )
 
 // Type checking.
@@ -111,9 +116,14 @@ func (b *Bundle) defBundle() di.Def {
 				if strings.HasPrefix(e.Path, "/dev/std") {
 					return nil
 				}
-			default:
-				if strings.HasPrefix(e.Error(), "sync /dev/stdout") {
-					return nil
+			// in case when we have multi zap cores, we getting a slice of errors wrapped by package uber-go/multierr
+			case multiErr:
+				for _, ee := range e.Errors() {
+					if ee, ok := ee.(*os.PathError); ok {
+						if strings.HasPrefix(ee.Path, "/dev/std") {
+							return nil
+						}
+					}
 				}
 			}
 
