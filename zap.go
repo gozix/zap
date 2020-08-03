@@ -113,16 +113,14 @@ func (b *Bundle) defBundle() di.Def {
 			var err = obj.(*zap.Logger).Sync()
 			switch e := err.(type) {
 			case *os.PathError:
-				if strings.HasPrefix(e.Path, "/dev/std") {
+				if isPathError(e) {
 					return nil
 				}
 			// in case when we have multi zap cores, we getting a slice of errors wrapped by package uber-go/multierr
 			case multiErr:
 				for _, ee := range e.Errors() {
-					if ee, ok := ee.(*os.PathError); ok {
-						if strings.HasPrefix(ee.Path, "/dev/std") {
-							return nil
-						}
+					if isPathError(ee) {
+						return nil
 					}
 				}
 			}
@@ -306,4 +304,13 @@ func (b *Bundle) options(cfg *viper.Viper) (_ []zap.Option, err error) {
 	}
 
 	return options, nil
+}
+
+// isPathError helper func for detecting os.PathError with specific path
+func isPathError(err error) bool {
+	if e, ok := err.(*os.PathError); ok {
+		return strings.HasPrefix(e.Path, "/dev/std")
+	}
+
+	return false
 }
