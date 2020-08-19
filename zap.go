@@ -111,21 +111,15 @@ func (b *Bundle) defBundle() di.Def {
 		Close: func(obj interface{}) error {
 			// os.Stdout.Sync() fails on different consoles. Ignoring error.
 			var err = obj.(*zap.Logger).Sync()
-			switch e := err.(type) {
-			case *os.PathError:
-				if isPathError(e) {
-					return nil
-				}
-			// in case when we have multi zap cores, we getting a slice of errors wrapped by package uber-go/multierr
-			case multiErr:
+			if e, ok := err.(multiErr); ok {
 				for _, ee := range e.Errors() {
-					if isPathError(ee) {
-						return nil
+					if handleError(ee) != nil {
+						return err
 					}
 				}
 			}
 
-			return err
+			return handleError(err)
 		},
 	}
 }
@@ -306,11 +300,13 @@ func (b *Bundle) options(cfg *viper.Viper) (_ []zap.Option, err error) {
 	return options, nil
 }
 
-// isPathError helper func for detecting os.PathError with specific path
-func isPathError(err error) bool {
+// handleError helper func for detecting os.PathError with specific path
+func handleError(err error) error {
 	if e, ok := err.(*os.PathError); ok {
-		return strings.HasPrefix(e.Path, "/dev/std")
+		if strings.HasPrefix(e.Path, "/dev/std") {
+			return nil
+		}
 	}
 
-	return false
+	return err
 }
