@@ -7,7 +7,6 @@ import (
 
 	glueBundle "github.com/gozix/glue/v2"
 	viperBundle "github.com/gozix/viper/v2"
-
 	"github.com/sarulabs/di/v2"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -38,6 +37,11 @@ type (
 	// fieldsConf is logger conf fieldsConf struct.
 	fieldsConf []struct {
 		Key, Value string
+	}
+
+	// multiErr is a stub for recognizing then error is a instance of uber-go/multierr
+	multiErr interface {
+		Errors() []error
 	}
 )
 
@@ -107,12 +111,15 @@ func (b *Bundle) defBundle() di.Def {
 		Close: func(obj interface{}) error {
 			// os.Stdout.Sync() fails on different consoles. Ignoring error.
 			var err = obj.(*zap.Logger).Sync()
-			if e, ok := err.(*os.PathError); ok {
-				if strings.HasPrefix(e.Path, "/dev/std") {
-					return nil
+			if e, ok := err.(multiErr); ok {
+				for _, ee := range e.Errors() {
+					if handleError(ee) != nil {
+						return err
+					}
 				}
 			}
-			return err
+
+			return handleError(err)
 		},
 	}
 }
@@ -291,4 +298,15 @@ func (b *Bundle) options(cfg *viper.Viper) (_ []zap.Option, err error) {
 	}
 
 	return options, nil
+}
+
+// handleError helper func for detecting os.PathError with specific path
+func handleError(err error) error {
+	if e, ok := err.(*os.PathError); ok {
+		if strings.HasPrefix(e.Path, "/dev/std") {
+			return nil
+		}
+	}
+
+	return err
 }
