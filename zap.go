@@ -117,6 +117,8 @@ func (b *Bundle) defBundle() di.Def {
 						return err
 					}
 				}
+
+				return nil
 			}
 
 			return handleError(err)
