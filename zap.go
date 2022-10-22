@@ -1,3 +1,7 @@
+// Copyright 2018 Sergey Novichkov. All rights reserved.
+// For the full copyright and license information, please view the LICENSE
+// file that was distributed with this source code.
+
 package zap
 
 import (
@@ -5,34 +9,21 @@ import (
 	"os"
 	"strings"
 
-	glueBundle "github.com/gozix/glue/v2"
-	viperBundle "github.com/gozix/viper/v2"
-	"github.com/sarulabs/di/v2"
+	"github.com/gozix/di"
+	gzGlue "github.com/gozix/glue/v3"
+	gzViper "github.com/gozix/viper/v3"
+
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-const (
-	// BundleName is default definition name.
-	BundleName = "zap"
-
-	// ArgCoreType is argument name.
-	ArgCoreType = "zap.core.type"
-
-	// TagCoreFactory is factory tag.
-	TagCoreFactory = "zap.core.factory"
-
-	// DefStreamCoreFactory is definition name.
-	DefStreamCoreFactory = "zap.core.stream"
-)
+// BundleName is default definition name.
+const BundleName = "zap"
 
 type (
 	// Bundle implements the glue.Bundle interface.
 	Bundle struct{}
-
-	// CoreFactory is type alias of core.Factory.
-	CoreFactory = func(path string) (zapcore.Core, error)
 
 	// fieldsConf is logger conf fieldsConf struct.
 	fieldsConf []struct {
@@ -45,194 +36,81 @@ type (
 	}
 )
 
-// Type checking.
-var _ glueBundle.Bundle = (*Bundle)(nil)
+// Bundle implements glue.Bundle.
+var _ gzGlue.Bundle = (*Bundle)(nil)
 
 // NewBundle create bundle instance.
 func NewBundle() *Bundle {
 	return new(Bundle)
 }
 
-// Key implements the glue.Bundle interface.
 func (b *Bundle) Name() string {
 	return BundleName
 }
 
 // Build implements the glue.Bundle interface.
-func (b *Bundle) Build(builder *di.Builder) (err error) {
-	var defs = make([]di.Def, 0, 2)
-	if !builder.IsDefined(BundleName) {
-		defs = append(defs, b.defBundle())
-	}
-
-	if !builder.IsDefined(DefStreamCoreFactory) {
-		defs = append(defs, b.defStreamCoreFactory())
-	}
-
-	return builder.Add(defs...)
+func (b *Bundle) Build(builder di.Builder) (err error) {
+	return builder.Apply(
+		di.Provide(b.provideZapLogger, di.Constraint(1, withCoreFactory())),
+		di.Provide(b.provideCoreFactory, AsCoreFactory()),
+	)
 }
 
-// DependsOn implements the glue.DependsOn interface.
 func (b *Bundle) DependsOn() []string {
-	return []string{viperBundle.BundleName}
-}
-
-// defBundle is definition getter.
-func (b *Bundle) defBundle() di.Def {
-	return di.Def{
-		Name: BundleName,
-		Build: func(ctn di.Container) (_ interface{}, err error) {
-			var cfg *viper.Viper
-			if err = ctn.Fill(viperBundle.BundleName, &cfg); err != nil {
-				return nil, err
-			}
-
-			var factories map[string]CoreFactory
-			if factories, err = b.factories(ctn); err != nil {
-				return nil, err
-			}
-
-			var cores []zapcore.Core
-			if cores, err = b.cores(cfg, factories); err != nil {
-				return nil, err
-			}
-
-			var options []zap.Option
-			if options, err = b.options(cfg); err != nil {
-				return nil, err
-			}
-
-			var logger = zap.New(zapcore.NewTee(cores...), options...)
-			zap.ReplaceGlobals(logger)
-			zap.RedirectStdLog(logger)
-
-			return logger, nil
-		},
-		Close: func(obj interface{}) error {
-			// os.Stdout.Sync() fails on different consoles. Ignoring error.
-			var err = obj.(*zap.Logger).Sync()
-			if e, ok := err.(multiErr); ok {
-				for _, ee := range e.Errors() {
-					if handleError(ee) != nil {
-						return err
-					}
-				}
-
-				return nil
-			}
-
-			return handleError(err)
-		},
+	return []string{
+		gzViper.BundleName,
 	}
 }
 
-// defStreamCoreFactory is definition getter.
-func (b *Bundle) defStreamCoreFactory() di.Def {
-	return di.Def{
-		Name: DefStreamCoreFactory,
-		Tags: []di.Tag{{
-			Name: TagCoreFactory,
-			Args: map[string]string{
-				ArgCoreType: "stream",
-			},
-		}},
-		Build: func(ctn di.Container) (interface{}, error) {
-			return func(path string) (_ zapcore.Core, err error) {
-				var cfg *viper.Viper
-				if err = ctn.Fill(viperBundle.BundleName, &cfg); err != nil {
-					return nil, err
-				}
-
-				var (
-					key   = strings.Split(path, ".")[0] + ".development"
-					eConf = zap.NewProductionEncoderConfig()
-				)
-
-				if cfg.IsSet(key) && cfg.GetBool(key) {
-					eConf = zap.NewDevelopmentEncoderConfig()
-				}
-
-				key = path + ".time_encoder"
-				if cfg.IsSet(key) {
-					if err = eConf.EncodeTime.UnmarshalText([]byte(cfg.GetString(key))); err != nil {
-						return nil, err
-					}
-				}
-
-				key = path + ".message_key"
-				if cfg.IsSet(key) {
-					eConf.MessageKey = cfg.GetString(key)
-				}
-
-				var encoding = "json"
-				key = path + ".encoding"
-				if cfg.IsSet(key) {
-					encoding = cfg.GetString(key)
-				}
-
-				var encoder zapcore.Encoder
-				switch encoding {
-				case "json":
-					encoder = zapcore.NewJSONEncoder(eConf)
-				case "console":
-					encoder = zapcore.NewConsoleEncoder(eConf)
-				default:
-					return nil, fmt.Errorf(`encoding "%s" is not supported`, encoding)
-				}
-
-				var level = zap.NewAtomicLevel()
-				key = path + ".level"
-				if cfg.IsSet(key) {
-					if err = level.UnmarshalText([]byte(cfg.GetString(key))); err != nil {
-						return nil, err
-					}
-				}
-
-				return zapcore.NewCore(encoder, zapcore.AddSync(os.Stdout), level), nil
-			}, nil
-		},
-	}
+func (b *Bundle) provideCoreFactory() CoreFactory {
+	return &coreFactory{}
 }
 
-// factories is factories getter.
-func (b *Bundle) factories(ctn di.Container) (_ map[string]CoreFactory, err error) {
-	var factories = make(map[string]CoreFactory, 4)
-	for name, def := range ctn.Definitions() {
-		for _, tag := range def.Tags {
-			if tag.Name != TagCoreFactory {
-				continue
+func (b *Bundle) provideZapLogger(
+	cfg *viper.Viper,
+	factories []CoreFactory,
+) (_ *zap.Logger, _ func() error, err error) {
+	var cores []zapcore.Core
+	if cores, err = b.cores(cfg, factories); err != nil {
+		return nil, nil, err
+	}
+
+	var options []zap.Option
+	if options, err = b.options(cfg); err != nil {
+		return nil, nil, err
+	}
+
+	var logger = zap.New(zapcore.NewTee(cores...), options...)
+	zap.ReplaceGlobals(logger)
+	zap.RedirectStdLog(logger)
+
+	return logger, func() error {
+		// os.Stdout.Sync() fails on different consoles. Ignoring error.
+		var err = logger.Sync()
+		if e, ok := err.(multiErr); ok {
+			for _, ee := range e.Errors() {
+				if b.handleError(ee) != nil {
+					return err
+				}
 			}
 
-			var coreType, ok = tag.Args[ArgCoreType]
-			if !ok {
-				return nil, fmt.Errorf(
-					`core definition "%s" don't have required argument "%s"`, def.Name, ArgCoreType,
-				)
-			}
-
-			if _, ok := factories[coreType]; ok {
-				return nil, fmt.Errorf(`core type "%s" factory already defined`, coreType)
-			}
-
-			var factory CoreFactory
-			if err = ctn.Fill(name, &factory); err != nil {
-				return nil, err
-			}
-
-			factories[coreType] = factory
-			break
+			return nil
 		}
-	}
 
-	return factories, nil
+		return b.handleError(err)
+	}, nil
 }
 
-// cores is cores getter.
-func (b *Bundle) cores(cfg *viper.Viper, factories map[string]CoreFactory) (_ []zapcore.Core, err error) {
+func (b *Bundle) cores(cfg *viper.Viper, factories []CoreFactory) (_ []zapcore.Core, err error) {
 	var (
 		defs  = cfg.GetStringMap(BundleName + ".cores")
 		cores = make([]zapcore.Core, 0, 4)
 	)
+
+	var factoriesMap = make(map[string]CoreFactory, len(factories))
+	for _, factory := range factories {
+		factoriesMap[factory.Name()] = factory
+	}
 
 	for def := range defs {
 		var path = fmt.Sprintf("%s.cores.%s", BundleName, def)
@@ -242,12 +120,12 @@ func (b *Bundle) cores(cfg *viper.Viper, factories map[string]CoreFactory) (_ []
 		}
 
 		var coreType = cfg.GetString(path + ".type")
-		if _, ok := factories[coreType]; !ok {
+		if _, ok := factoriesMap[coreType]; !ok {
 			return nil, fmt.Errorf(`core factory with type "%s" is not defined`, coreType)
 		}
 
 		var c zapcore.Core
-		if c, err = factories[coreType](path); err != nil {
+		if c, err = factoriesMap[coreType].New(cfg, path); err != nil {
 			return nil, err
 		}
 
@@ -302,8 +180,7 @@ func (b *Bundle) options(cfg *viper.Viper) (_ []zap.Option, err error) {
 	return options, nil
 }
 
-// handleError helper func for detecting os.PathError with specific path
-func handleError(err error) error {
+func (b *Bundle) handleError(err error) error {
 	if e, ok := err.(*os.PathError); ok {
 		if strings.HasPrefix(e.Path, "/dev/std") {
 			return nil
